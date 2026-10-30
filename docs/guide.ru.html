@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<style>
+  :root { --bg:#070b0b; --panel:#0b1211; --line:#1d2b2b; --mint:#5ef2c0; --text:#e6f2ef; --muted:#7d9893; }
+  * { box-sizing: border-box; }
+  body { margin:0; width:1600px; height:1280px; overflow:hidden; color:var(--text);
+    font-family:"Segoe UI", Roboto, sans-serif;
+    background: radial-gradient(70% 55% at 78% 0%, #10211e 0%, #070b0b 55%, #050808 100%); }
+  .bg { position:absolute; inset:0; opacity:.14;
+    background-image: linear-gradient(#1d2b2b 1px, transparent 1px), linear-gradient(90deg, #1d2b2b 1px, transparent 1px);
+    background-size: 46px 46px; mask-image: radial-gradient(75% 70% at 50% 42%, #000 0%, transparent 88%); }
+  .guide { position:relative; padding:42px 46px 30px; }
+  header { display:flex; align-items:flex-end; justify-content:space-between; gap:24px; margin-bottom:26px; }
+  .brand { display:flex; align-items:center; gap:12px; }
+  .brand .dot { width:12px; height:12px; border-radius:50%; background:var(--mint); box-shadow:0 0 18px rgba(94,242,192,.8); }
+  .brand b { font-size:30px; letter-spacing:.16em; color:var(--mint); }
+  h1 { margin:0; font-size:34px; letter-spacing:-.02em; font-weight:750; }
+  header p { margin:6px 0 0; color:var(--muted); font-size:15px; }
+  .hint { color:var(--muted); font-family:"Cascadia Mono", Consolas, monospace; font-size:11px; letter-spacing:.06em; text-align:right; line-height:1.8; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+  .card { position:relative; padding:16px; border:1px solid var(--line); border-radius:20px; background:linear-gradient(160deg, rgba(21,32,30,.96), rgba(9,16,15,.98)); box-shadow:0 24px 60px rgba(0,0,0,.35); }
+  .step { position:absolute; z-index:4; top:18px; left:18px; width:46px; height:46px; border-radius:50%;
+    display:grid; place-items:center; background:var(--mint); color:#07100e; font-weight:800; font-size:20px;
+    box-shadow:0 0 0 7px rgba(94,242,192,.12), 0 0 26px rgba(94,242,192,.45); }
+  .shot { position:relative; height:318px; overflow:hidden; border:1px solid var(--line); border-radius:13px; background:#050908; }
+  .shot img { width:100%; height:100%; object-fit:cover; object-position:top center; display:block; }
+  .ring { position:absolute; border:3px solid var(--mint); border-radius:50%;
+    box-shadow:0 0 0 6px rgba(94,242,192,.08), 0 0 22px rgba(94,242,192,.35); pointer-events:none; }
+  .card h2 { margin:14px 2px 3px; font-size:20px; letter-spacing:-.01em; }
+  .card p { margin:0 2px; color:var(--muted); font-size:13.5px; line-height:1.45; }
+  .tag { position:absolute; z-index:4; top:26px; right:26px; padding:6px 10px; border:1px solid var(--line); border-radius:999px;
+    background:rgba(7,11,11,.72); color:var(--mint); font-family:"Cascadia Mono", Consolas, monospace; font-size:10px; letter-spacing:.08em; }
+  footer { display:flex; justify-content:space-between; gap:20px; margin-top:24px; padding-top:18px; border-top:1px solid var(--line);
+    color:var(--muted); font-size:12px; letter-spacing:.02em; }
+  footer b { color:var(--mint); font-weight:600; }
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="guide">
+  <header>
+    <div>
+      <div class="brand"><span class="dot"></span><b>PAD</b></div>
+      <h1>Подключение за 4 шага</h1>
+      <p>От окна сервера до игры — без проводов и облака.</p>
+    </div>
+    <div class="hint">ТОЛЬКО ДОМАШНЯЯ WI-FI<br>КОД ДОСТУПА ОБЯЗАТЕЛЕН</div>
+  </header>
+
+  <div class="grid">
+    <section class="card">
+      <div class="step">1</div>
+      <div class="shot">
+        <img src="mockups/server.png" alt="Окно сервера Pad">
+        <div class="ring" style="left:12%; top:34%; width:48%; height:22%; border-radius:14px;"></div>
+      </div>
+      <h2>Запусти сервер</h2>
+      <p>В окне появятся адрес ПК и код доступа. Телефон и ПК должны быть в одной Wi-Fi сети.</p>
+    </section>
+
+    <section class="card">
+      <div class="step">2</div>
+      <div class="shot">
+        <img src="mockups/connect.ru.png" alt="Экран подключения Pad">
+        <div class="ring" style="left:24%; top:22%; width:52%; height:58%; border-radius:18px;"></div>
+      </div>
+      <h2>Введи адрес и код</h2>
+      <p>Открой Pad на телефоне, вставь адрес вида <b>192.168.0.105:8090</b> и код из окна сервера.</p>
+    </section>
+
+    <section class="card">
+      <div class="step">3</div>
+      <div class="shot">
+        <img src="mockups/phone.ru.png" alt="Подключённый геймпад">
+        <div class="ring" style="left:39%; top:2%; width:25%; height:12%; border-radius:999px;"></div>
+      </div>
+      <h2>Подключись</h2>
+      <p>Нажми «Подключиться». Статус «подключено» и пинг — значит, игра уже видит Xbox-контроллер.</p>
+    </section>
+
+    <section class="card">
+      <div class="step">4</div>
+      <div class="shot">
+        <img src="mockups/settings.ru.png" alt="Настройки геймпада">
+        <div class="ring" style="left:22%; top:15%; width:56%; height:62%; border-radius:18px;"></div>
+      </div>
+      <h2>Настрой под себя</h2>
+      <p>Размер кнопок, форма, чувствительность стиков, вибрация и качество экрана — всё в шестерёнке.</p>
+    </section>
+  </div>
+
+  <footer>
+    <span>Только домашняя сеть · код доступа · без аккаунтов и облака</span>
+    <span><b>PAD</b> / v0.1</span>
+  </footer>
+</div>
+</body>
+</html>

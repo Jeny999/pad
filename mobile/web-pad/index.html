@@ -1,0 +1,1677 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#070b0b">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230e1616'/%3E%3Ccircle cx='16' cy='16' r='6' fill='none' stroke='%235ef2c0' stroke-width='3'/%3E%3C/svg%3E">
+<title>Pad</title>
+<style>
+  :root {
+    --bg: #070b0b;
+    --panel: #0e1616;
+    --line: #1d2b2b;
+    --line-strong: #2b4040;
+    --text: #e6f2ef;
+    --muted: #7d9893;
+    --mint: #5ef2c0;
+    --amber: #ffc46b;
+    --red: #ff6b6b;
+    --blue: #6bb8ff;
+    --mono: "Cascadia Mono", "Consolas", "SF Mono", monospace;
+    --sans: "Segoe UI", "Roboto", system-ui, sans-serif;
+    --pad-scale: 1;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0; height: 100dvh;
+    background: radial-gradient(120% 90% at 50% 0%, #0d1b19 0%, var(--bg) 58%);
+    color: var(--text); font-family: var(--sans);
+    overflow: hidden; overscroll-behavior: none;
+    touch-action: none; user-select: none; -webkit-user-select: none;
+  }
+  #app { position: fixed; inset: 0; height: 100dvh; display: flex; flex-direction: column; }
+
+  #bar {
+    position: relative; z-index: 20;
+    display: flex; align-items: center; gap: 14px;
+    height: calc(44px + env(safe-area-inset-top));
+    padding: env(safe-area-inset-top) calc(12px + env(safe-area-inset-right)) 0 calc(14px + env(safe-area-inset-left));
+    border-bottom: 1px solid var(--line);
+    background: rgba(7, 11, 11, .78);
+    backdrop-filter: blur(8px);
+  }
+  .brand { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 12px; letter-spacing: .14em; }
+  .brand b { font-weight: 700; }
+  .tag { color: var(--mint); border: 1px solid var(--line-strong); border-radius: 999px; padding: 2px 7px; font-size: 9.5px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); box-shadow: 0 0 8px currentColor; color: var(--muted); }
+  .dot.ok { background: var(--mint); color: var(--mint); }
+  .dot.wait { background: var(--amber); color: var(--amber); animation: pulse 1s infinite alternate; }
+  .dot.bad { background: var(--red); color: var(--red); }
+  @keyframes pulse { from { opacity: .35; } to { opacity: 1; } }
+  .hud { display: flex; align-items: center; gap: 14px; margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .hud #ping { color: var(--mint); min-width: 58px; text-align: right; }
+  .hud #ping.bad { color: var(--amber); }
+  .actions { display: flex; gap: 8px; }
+  .actions button {
+    font-family: var(--mono); font-size: 10px; letter-spacing: .06em;
+    color: var(--text); background: var(--panel); border: 1px solid var(--line-strong);
+    border-radius: 9px; padding: 8px 11px; touch-action: none;
+  }
+  .actions button:active { border-color: var(--mint); color: var(--mint); }
+  .actions button.icon { width: 38px; padding: 0; display: grid; place-items: center; }
+  .actions button.icon svg { width: 17px; height: 17px; }
+  .actions button.lang { min-width: 46px; padding: 0 9px; font-weight: 700; letter-spacing: 0.08em; color: var(--mint); }
+
+  #stage { position: relative; flex: 1; min-height: 0; z-index: 1; }
+
+  .stick-zone {
+    position: absolute; bottom: 7%;
+    width: calc(min(38vmin, 200px) * var(--pad-scale) * var(--item-scale, 1));
+    height: calc(min(38vmin, 200px) * var(--pad-scale) * var(--item-scale, 1));
+    border-radius: 50%; touch-action: none;
+  }
+  #lstick { left: 2.5%; }
+  #rstick { right: 2.5%; }
+  .stick-base {
+    position: absolute; inset: 0; border-radius: 50%;
+    border: 1px solid var(--line-strong);
+    background: radial-gradient(circle at 35% 30%, rgba(94,242,192,.08), transparent 60%), rgba(9, 18, 17, .7);
+    box-shadow: inset 0 0 30px rgba(0,0,0,.6), 0 10px 30px rgba(0,0,0,.35);
+  }
+  .stick-zone::after {
+    content: "L"; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    font-family: var(--mono); font-size: 10px; color: var(--muted); opacity: .35; pointer-events: none;
+  }
+  #rstick::after { content: "R"; }
+  .stick-knob {
+    position: absolute; left: 50%; top: 50%; width: 42%; height: 42%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%; border: 1px solid var(--line-strong);
+    background: radial-gradient(circle at 35% 30%, #22322f, #0b1413 70%);
+    box-shadow: 0 6px 18px rgba(0,0,0,.5), inset 0 0 14px rgba(94,242,192,.08);
+    will-change: transform;
+  }
+  .stick-zone.active .stick-knob { border-color: var(--mint); box-shadow: 0 0 22px rgba(94,242,192,.35), inset 0 0 14px rgba(94,242,192,.18); }
+
+  .dpad { position: absolute; left: 23%; bottom: 4%;
+    width: calc(min(28vmin, 150px) * var(--pad-scale) * var(--item-scale, 1));
+    height: calc(min(28vmin, 150px) * var(--pad-scale) * var(--item-scale, 1)); }
+  .face { position: absolute; right: 22%; bottom: 6%;
+    width: calc(min(36vmin, 190px) * var(--pad-scale) * var(--item-scale, 1));
+    height: calc(min(36vmin, 190px) * var(--pad-scale) * var(--item-scale, 1)); }
+  .dpad button, .face button {
+    position: absolute; width: 32%; height: 32%; border-radius: 16%;
+    border: 1px solid var(--line-strong); color: var(--text);
+    background: linear-gradient(160deg, #14201f, #0b1211);
+    font-family: var(--mono); font-size: clamp(12px, 3.2vmin, 17px); font-weight: 700;
+    touch-action: none; display: grid; place-items: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,.35);
+  }
+  .dpad button.pressed, .face button.pressed, .shoulder.pressed, .center button.pressed {
+    border-color: var(--mint); color: var(--mint);
+    background: linear-gradient(160deg, #1b3631, #0e1d1a);
+    box-shadow: 0 0 18px rgba(94,242,192,.35);
+  }
+  .dpad [data-dpad="up"] { left: 34%; top: 0; }
+  .dpad [data-dpad="left"] { left: 0; top: 34%; }
+  .dpad [data-dpad="right"] { right: 0; top: 34%; }
+  .dpad [data-dpad="down"] { left: 34%; bottom: 0; }
+  .face [data-btn="y"] { left: 34%; top: 0; color: #ffe08a; }
+  .face [data-btn="x"] { left: 0; top: 34%; color: var(--blue); }
+  .face [data-btn="b"] { right: 0; top: 34%; color: var(--red); }
+  .face [data-btn="a"] { left: 34%; bottom: 0; color: var(--mint); }
+  .face [data-btn="a"], .face [data-btn="b"], .face [data-btn="x"], .face [data-btn="y"] { border-radius: 50%; }
+
+  .face[data-shape="round"] button, .dpad[data-shape="round"] button { border-radius: 50%; }
+  .face[data-shape="soft"] button, .dpad[data-shape="soft"] button { border-radius: 24%; }
+  .face[data-shape="square"] button, .dpad[data-shape="square"] button { border-radius: 8%; }
+  .shoulder[data-shape="round"] { border-radius: 999px; }
+  .shoulder[data-shape="soft"] { border-radius: 9px; }
+  .shoulder[data-shape="square"] { border-radius: 4px; }
+
+  .shoulder {
+    position: absolute; width: calc(17% * var(--item-scale, 1));
+    height: calc(clamp(28px, 7.5vmin, 44px) * var(--item-scale, 1));
+    border-radius: 9px; border: 1px solid var(--line-strong);
+    background: linear-gradient(160deg, #14201f, #0b1211);
+    color: var(--muted); font-family: var(--mono); font-size: clamp(9px, 2.4vmin, 12px);
+    letter-spacing: .08em; touch-action: none;
+  }
+  .shoulder.trig { color: var(--amber); }
+  .shoulder.lt { left: 2%; top: 2%; }
+  .shoulder.lb { left: 2%; top: calc(2% + clamp(34px, 9vmin, 50px)); }
+  .shoulder.rt { right: 2%; top: 2%; }
+  .shoulder.rb { right: 2%; top: calc(2% + clamp(34px, 9vmin, 50px)); }
+
+  .center {
+    position: absolute; left: 50%; bottom: 2%;
+    transform: translateX(-50%) scale(var(--item-scale, 1));
+    transform-origin: bottom center; display: flex; gap: 10px;
+  }
+  .center button {
+    border-radius: 999px; border: 1px solid var(--line-strong); color: var(--muted);
+    background: var(--panel); font-family: var(--mono); font-size: 9px; letter-spacing: .12em;
+    padding: 7px 13px; touch-action: none;
+  }
+
+  #screen-view {
+    position: absolute; inset: 0; z-index: 0; overflow: hidden;
+    background: #000; pointer-events: none;
+  }
+  #screen-view[hidden] { display: none; }
+  #screen-canvas { display: block; width: 100%; height: 100%; background: #000; }
+  .stick-zone, .dpad, .face, .center, .shoulder { z-index: 1; }
+  #screen-state { color: var(--mint); font-size: 10px; }
+  .actions button.icon.active { border-color: var(--mint); color: var(--mint); background: #10241f; }
+
+  #btn-editor {
+    position: fixed; z-index: 46; width: 214px; padding: 8px 10px;
+    background: var(--panel); border: 1px solid var(--mint); border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .55); font-family: var(--mono); font-size: 10px;
+  }
+  #btn-editor[hidden] { display: none; }
+  .be-title { display: flex; justify-content: space-between; align-items: center; color: var(--mint); margin-bottom: 4px; }
+  .be-actions { display: flex; gap: 4px; }
+  .be-title button {
+    border: 1px solid var(--line-strong); background: #0a1413; color: var(--muted);
+    border-radius: 6px; padding: 3px 6px; font-family: var(--mono); font-size: 8px;
+  }
+  .be-title #be-done { color: var(--mint); border-color: var(--mint); }
+  .be-row { display: flex; align-items: center; gap: 6px; margin-top: 7px; color: var(--muted); }
+  .be-row > span { width: 46px; flex: 0 0 auto; }
+  .be-row button {
+    border: 1px solid var(--line-strong); background: #0a1413; color: var(--text);
+    border-radius: 7px; min-width: 25px; height: 25px; font-family: var(--mono); font-size: 11px;
+  }
+  .be-row b { color: var(--text); min-width: 40px; text-align: center; }
+  .be-move { display: grid; grid-template-columns: repeat(3, 25px); grid-template-rows: repeat(2, 25px); gap: 4px; }
+  .be-move [data-be-move="up"] { grid-column: 2; grid-row: 1; }
+  .be-move [data-be-move="left"] { grid-column: 1; grid-row: 2; }
+  .be-move [data-be-move="right"] { grid-column: 2; grid-row: 2; }
+  .be-move [data-be-move="down"] { grid-column: 3; grid-row: 2; }
+
+  #settings {
+    position: fixed; inset: 0; z-index: 50; display: none;
+    align-items: center; justify-content: center; padding: 16px;
+    background: rgba(4, 8, 8, .74); backdrop-filter: blur(6px);
+  }
+  #settings.visible { display: flex; }
+  .sheet {
+    width: min(520px, 94vw); max-height: 88dvh; overflow-y: auto;
+    background: var(--panel); border: 1px solid var(--line-strong);
+    border-radius: 18px; padding: 18px; box-shadow: 0 24px 80px rgba(0,0,0,.6);
+  }
+  .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
+  .sheet-head h2 { margin: 0; font-size: 17px; }
+  .sheet-head button {
+    width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--line-strong);
+    background: #0a1413; color: var(--text); font-size: 18px; line-height: 1;
+  }
+  .setting-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; font-size: 12.5px; }
+  .setting-row b { font-family: var(--mono); color: var(--mint); font-size: 12px; }
+  .sheet input[type="range"] { width: 100%; margin-top: 8px; accent-color: var(--mint); }
+  .segmented { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
+  .segmented.four { grid-template-columns: repeat(4, 1fr); }
+  .segmented.four button { font-size: 9px; padding: 9px 3px; }
+  .segmented button {
+    padding: 10px 6px; border-radius: 10px; border: 1px solid var(--line-strong);
+    background: #0a1413; color: var(--muted); font-family: var(--mono); font-size: 10px;
+  }
+  .segmented button.active { border-color: var(--mint); color: var(--mint); background: #10241f; }
+  .sheet-btn {
+    width: 100%; margin-top: 12px; padding: 12px; border-radius: 11px;
+    border: 1px solid var(--line-strong); background: #0a1413; color: var(--text);
+    font-family: var(--mono); font-size: 11px; letter-spacing: .08em;
+  }
+  .sheet-btn.ghost { color: var(--muted); }
+  .switch { position: relative; display: inline-block; width: 46px; height: 26px; flex: 0 0 auto; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch span {
+    position: absolute; inset: 0; border-radius: 999px;
+    background: #1a2927; border: 1px solid var(--line-strong); transition: .2s;
+  }
+  .switch span::after {
+    content: ""; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px;
+    border-radius: 50%; background: var(--muted); transition: .2s;
+  }
+  .switch input:checked + span { background: #12332c; border-color: var(--mint); }
+  .switch input:checked + span::after { transform: translateX(20px); background: var(--mint); }
+  .sheet-hint { margin: 10px 0 0; color: var(--muted); font-size: 10.5px; line-height: 1.45; }
+  .sheet-hint.bad { color: var(--red); }
+
+  #app.editing .stick-zone, #app.editing .dpad, #app.editing .face,
+  #app.editing .center, #app.editing .shoulder {
+    outline: 1px dashed rgba(94, 242, 192, .6); outline-offset: 4px; cursor: move;
+  }
+  #app.editing .selected { outline: 2px solid var(--mint); outline-offset: 4px; }
+  #editbar {
+    position: fixed; top: calc(54px + env(safe-area-inset-top)); left: 50%;
+    transform: translateX(-50%); z-index: 45; display: none; align-items: center; gap: 12px;
+    background: var(--panel); border: 1px solid var(--mint); border-radius: 999px;
+    padding: 8px 14px; font-family: var(--mono); font-size: 10px; color: var(--mint);
+  }
+  #editbar.visible { display: flex; }
+  #editbar button {
+    border: 1px solid var(--line-strong); background: #0a1413; color: var(--text);
+    border-radius: 999px; padding: 6px 10px; font-family: var(--mono); font-size: 10px;
+  }
+
+  #overlay {
+    position: fixed; inset: 0; z-index: 40; display: none;
+    align-items: flex-start; justify-content: center; padding: 20px;
+    overflow-y: auto; background: rgba(4, 8, 8, .82); backdrop-filter: blur(6px);
+  }
+  #overlay.visible { display: flex; }
+  .panel {
+    position: relative;
+    margin: auto 0;
+    width: min(420px, 92vw); background: var(--panel); border: 1px solid var(--line-strong);
+    border-radius: 18px; padding: 22px; box-shadow: 0 24px 80px rgba(0,0,0,.6);
+  }
+  .panel h1 { margin: 0 0 6px; font-size: 20px; letter-spacing: -.01em; }
+  .panel p { margin: 0 0 12px; color: var(--muted); font-size: 12.5px; line-height: 1.5; }
+  .panel label { display: block; margin-top: 12px; }
+  .panel label span { display: block; margin-bottom: 6px; font-size: 10px; letter-spacing: .1em; color: var(--muted); }
+  .panel input {
+    width: 100%; background: #091110; border: 1px solid var(--line-strong); border-radius: 11px;
+    color: var(--text); font-family: var(--mono); font-size: 17px; letter-spacing: .18em;
+    padding: 13px 14px; text-transform: uppercase; outline: none;
+  }
+  #address { text-transform: none; letter-spacing: .04em; font-size: 15px; }
+  .panel input:focus { border-color: var(--mint); box-shadow: 0 0 0 3px rgba(94,242,192,.12); }
+  .panel button {
+    width: 100%; margin-top: 12px; padding: 13px; border-radius: 11px; border: 1px solid var(--mint);
+    background: linear-gradient(160deg, #1c3d36, #10241f); color: var(--mint);
+    font-family: var(--mono); font-size: 12px; letter-spacing: .1em;
+  }
+  .panel button.secondary {
+    margin-top: 8px; border-color: var(--line-strong); color: var(--text); background: #0a1413;
+  }
+  .panel .hint { margin-top: 12px; font-size: 11px; color: var(--muted); }
+  .panel .hint.bad { color: var(--red); }
+  .panel button.lang-overlay {
+    position: absolute; top: 12px; right: 12px; width: auto; margin: 0;
+    padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line-strong);
+    background: #0a1413; color: var(--mint); font-size: 10px; letter-spacing: .08em;
+  }
+
+  #rotate {
+    position: fixed; inset: 0; z-index: 30; display: none;
+    align-items: center; justify-content: center; text-align: center;
+    background: var(--bg); color: var(--muted); font-family: var(--mono); font-size: 13px;
+    letter-spacing: .08em; padding: 30px;
+  }
+  @media (orientation: portrait) { #rotate { display: flex; } }
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="bar">
+    <div class="brand"><span class="dot" id="dot"></span><b>PAD</b></div>
+    <div class="hud"><span id="status">подключение…</span><span id="screen-state" hidden>ЭКРАН: —</span><span id="ping">— мс</span></div>
+    <div class="actions">
+      <button type="button" id="fs" data-i18n="hud.fullscreen">НА ВЕСЬ ЭКРАН</button>
+      <button type="button" id="screen-btn" class="icon" aria-label="Экран ПК" data-i18n-aria="hud.screenAria">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
+      </button>
+      <button type="button" id="settings-btn" class="icon" aria-label="Настройки" data-i18n-aria="hud.settingsAria">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>
+      </button>
+      <button type="button" id="lang-btn" class="lang" aria-label="Язык" data-i18n-aria="hud.langAria">EN</button>
+      <button type="button" id="key-btn" data-i18n="hud.code">КОД</button>
+      <button type="button" id="reset" data-i18n="common.reset">СБРОС</button>
+    </div>
+  </header>
+
+  <main id="stage">
+    <div id="screen-view" hidden><canvas id="screen-canvas"></canvas></div>
+
+    <button type="button" class="shoulder trig lt" data-trig="lt">LT</button>
+    <button type="button" class="shoulder lb" data-btn="lb">LB</button>
+    <button type="button" class="shoulder trig rt" data-trig="rt">RT</button>
+    <button type="button" class="shoulder rb" data-btn="rb">RB</button>
+
+    <div class="stick-zone" id="lstick"><div class="stick-base"><div class="stick-knob"></div></div></div>
+    <div class="stick-zone" id="rstick"><div class="stick-base"><div class="stick-knob"></div></div></div>
+
+    <div class="dpad">
+      <button type="button" data-dpad="up" aria-label="Вверх" data-i18n-aria="dpad.up">▲</button>
+      <button type="button" data-dpad="left" aria-label="Влево" data-i18n-aria="dpad.left">◀</button>
+      <button type="button" data-dpad="right" aria-label="Вправо" data-i18n-aria="dpad.right">▶</button>
+      <button type="button" data-dpad="down" aria-label="Вниз" data-i18n-aria="dpad.down">▼</button>
+    </div>
+
+    <div class="face">
+      <button type="button" data-btn="y" aria-label="Y">Y</button>
+      <button type="button" data-btn="x" aria-label="X">X</button>
+      <button type="button" data-btn="b" aria-label="B">B</button>
+      <button type="button" data-btn="a" aria-label="A">A</button>
+    </div>
+
+    <div class="center">
+      <button type="button" data-btn="back">BACK</button>
+      <button type="button" data-btn="start">START</button>
+    </div>
+  </main>
+</div>
+
+<div id="editbar">
+  <span data-i18n="edit.hint">ВЫБЕРИ КНОПКУ И НАСТРОЙ</span>
+  <button type="button" id="edit-done" data-i18n="common.done">ГОТОВО</button>
+</div>
+
+<div id="btn-editor" hidden>
+  <div class="be-title">
+    <span id="be-name">Кнопка</span>
+    <div class="be-actions">
+      <button type="button" id="be-reset" data-i18n="common.reset">СБРОС</button>
+      <button type="button" id="be-done" data-i18n="common.done">ГОТОВО</button>
+    </div>
+  </div>
+  <div class="be-row">
+    <span data-i18n="edit.size">Размер</span>
+    <button type="button" data-be-size="-">−</button>
+    <b id="be-size">100%</b>
+    <button type="button" data-be-size="+">+</button>
+  </div>
+  <div class="be-row" id="be-shape-row">
+    <span data-i18n="edit.shape">Форма</span>
+    <button type="button" id="be-shape">КРУГ</button>
+  </div>
+  <div class="be-row">
+    <span data-i18n="edit.offset">Сдвиг</span>
+    <div class="be-move">
+      <button type="button" data-be-move="up" aria-label="Вверх" data-i18n-aria="dpad.up">↑</button>
+      <button type="button" data-be-move="left" aria-label="Влево" data-i18n-aria="dpad.left">←</button>
+      <button type="button" data-be-move="right" aria-label="Вправо" data-i18n-aria="dpad.right">→</button>
+      <button type="button" data-be-move="down" aria-label="Вниз" data-i18n-aria="dpad.down">↓</button>
+    </div>
+  </div>
+</div>
+
+<div id="settings">
+  <div class="sheet">
+    <div class="sheet-head">
+      <h2 data-i18n="settings.title">Настройки геймпада</h2>
+      <button type="button" id="settings-close" aria-label="Закрыть" data-i18n-aria="common.close">×</button>
+    </div>
+
+    <div class="setting-row"><span data-i18n="settings.scale">Размер кнопок и стиков</span><b id="scale-value">100%</b></div>
+    <input type="range" id="set-scale" min="80" max="140" step="5">
+
+    <div class="setting-row"><span data-i18n="settings.shape">Форма кнопок</span></div>
+    <div class="segmented" id="shape-group">
+      <button type="button" data-shape="round" data-i18n="settings.shapeRound">Круги</button>
+      <button type="button" data-shape="soft" data-i18n="settings.shapeSoft">Скругление</button>
+      <button type="button" data-shape="square" data-i18n="settings.shapeSquare">Квадраты</button>
+    </div>
+
+    <div class="setting-row"><span data-i18n="settings.sensL">Чувствительность левого стика</span><b id="sens-l-value">100%</b></div>
+    <input type="range" id="set-sens-l" min="50" max="200" step="5">
+
+    <div class="setting-row"><span data-i18n="settings.sensR">Чувствительность правого стика</span><b id="sens-r-value">100%</b></div>
+    <input type="range" id="set-sens-r" min="50" max="200" step="5">
+
+    <div class="setting-row">
+      <span data-i18n="settings.rumble">Вибрация от игры</span>
+      <label class="switch"><input type="checkbox" id="set-rumble" checked><span></span></label>
+    </div>
+
+    <div class="setting-row">
+      <span data-i18n="settings.screen">Экран ПК</span>
+      <label class="switch"><input type="checkbox" id="set-screen"><span></span></label>
+    </div>
+    <p class="sheet-hint" data-i18n="settings.screenHint">Экран передаётся только пока просмотр включён — выключил, передача остановилась.</p>
+
+    <div class="setting-row"><span data-i18n="settings.quality">Качество экрана</span><b id="screen-quality-label">Высокое</b></div>
+    <div class="segmented four" id="screen-quality">
+      <button type="button" data-quality="low" data-i18n="quality.low">Эконом</button>
+      <button type="button" data-quality="medium" data-i18n="quality.medium">Обычное</button>
+      <button type="button" data-quality="high" data-i18n="quality.high">Высокое</button>
+      <button type="button" data-quality="ultra" data-i18n="quality.ultra">Максимум</button>
+    </div>
+    <p class="sheet-hint" id="screen-quality-hint">1280 px · q68 · ≈17 Мбит/с</p>
+
+    <div class="setting-row"><span data-i18n="settings.fps">Кадры в секунду</span><b id="screen-fps-label">30</b></div>
+    <div class="segmented four" id="screen-fps">
+      <button type="button" data-fps="15">15</button>
+      <button type="button" data-fps="30">30</button>
+      <button type="button" data-fps="60">60</button>
+      <button type="button" data-fps="120">120</button>
+    </div>
+    <p class="sheet-hint" data-i18n="settings.fpsHint">Фактический FPS зависит от монитора и Wi-Fi. 120 возможен только на 120-Гц экране.</p>
+    <button type="button" class="sheet-btn" id="rumble-test" data-i18n="settings.testRumble">ПРОВЕРИТЬ ВИБРАЦИЮ</button>
+    <p class="sheet-hint" id="rumble-hint" data-i18n="settings.rumbleHint">Игра должна поддерживать вибрацию геймпада.</p>
+
+    <button type="button" class="sheet-btn" id="layout-edit" data-i18n="settings.editLayout">ИЗМЕНИТЬ РАСПОЛОЖЕНИЕ</button>
+    <button type="button" class="sheet-btn ghost" id="layout-reset" data-i18n="settings.resetLayout">СБРОСИТЬ РАСКЛАДКУ</button>
+  </div>
+</div>
+
+<div id="rotate" data-i18n="rotate">ПОВЕРНИ ТЕЛЕФОН ГОРИЗОНТАЛЬНО</div>
+
+<div id="overlay" class="visible">
+  <div class="panel">
+    <button type="button" id="lang-overlay" class="lang-overlay" aria-label="Язык" data-i18n-aria="hud.langAria">EN</button>
+    <h1>Pad</h1>
+    <p data-i18n="connect.intro">Телефон станет Xbox-контроллером для игр на ПК. Адрес и код показаны в окне сервера геймпада на ПК.</p>
+    <label><span data-i18n="connect.address">АДРЕС ПК</span>
+      <input id="address" inputmode="url" autocomplete="off" spellcheck="false" placeholder="192.168.0.105:8090">
+    </label>
+    <label><span data-i18n="connect.code">КОД ДОСТУПА</span>
+      <input id="key" inputmode="text" autocomplete="off" spellcheck="false" placeholder="КОД" data-i18n-placeholder="connect.codePlaceholder">
+    </label>
+    <button type="button" id="connect" data-i18n="connect.button">ПОДКЛЮЧИТЬСЯ</button>
+    <button type="button" id="test" class="secondary" data-i18n="connect.test">ПРОВЕРИТЬ СВЯЗЬ</button>
+    <p class="hint" id="hint">Телефон и ПК должны быть в одной Wi-Fi сети.</p>
+    <p class="hint" data-i18n="connect.miui">Чтобы экран не гас: MIUI → Настройки → Экран → Таймаут 10 минут.</p>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  const $ = (selector, root = document) => root.querySelector(selector);
+  const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+  const KEY_STORE = 'pad.key';
+  const ADDR_STORE = 'pad.address';
+  const CONFIG_STORE = 'pad.config.v1';
+  const BITS = { a: 1, b: 2, x: 4, y: 8, lb: 16, rb: 32, back: 64, start: 128, ls: 256, rs: 512 };
+  const DPAD_BITS = { up: 1, down: 2, left: 4, right: 8 };
+  const state = { lx: 0, ly: 0, rx: 0, ry: 0, lt: 0, rt: 0, b: 0, d: 0 };
+  const SCREEN_PROFILES = {
+    low: { label: 'Эконом', width: 640, quality: 45, bytes: 14000 },
+    medium: { label: 'Обычное', width: 960, quality: 60, bytes: 40000 },
+    high: { label: 'Высокое', width: 1280, quality: 68, bytes: 72000 },
+    ultra: { label: 'Максимум', width: 1600, quality: 80, bytes: 140000 },
+  };
+  const DEFAULT_CONFIG = {
+    scale: 1, shape: 'round', sensL: 1, sensR: 1, rumble: true, screen: false,
+    screenQuality: 'high', screenFps: 30, layout: {}, items: {},
+  };
+  const LAYOUT_TARGETS = {
+    lstick: '#lstick', rstick: '#rstick', dpad: '.dpad', face: '.face',
+    center: '.center', lt: '.shoulder.lt', lb: '.shoulder.lb',
+    rt: '.shoulder.rt', rb: '.shoulder.rb',
+  };
+  const ITEM_NAMES = {
+    lstick: 'Левый стик', rstick: 'Правый стик', dpad: 'D-pad', face: 'A/B/X/Y',
+    lt: 'LT', lb: 'LB', rt: 'RT', rb: 'RB', center: 'BACK/START',
+  };
+  const SHAPE_NAMES = { round: 'КРУГ', soft: 'СКРУГЛ.', square: 'КВАДРАТ' };
+
+  const LANG_STORE = 'pad.lang';
+  const I18N = {
+  "ru": {
+    "hud.fullscreen": "НА ВЕСЬ ЭКРАН",
+    "hud.code": "КОД",
+    "hud.reset": "СБРОС",
+    "hud.screenAria": "Экран ПК",
+    "hud.settingsAria": "Настройки",
+    "hud.langAria": "Язык",
+    "common.done": "ГОТОВО",
+    "common.reset": "СБРОС",
+    "common.close": "Закрыть",
+    "edit.hint": "ВЫБЕРИ КНОПКУ И НАСТРОЙ",
+    "edit.button": "Кнопка",
+    "edit.size": "Размер",
+    "edit.shape": "Форма",
+    "edit.offset": "Сдвиг",
+    "edit.resetDone": "Раскладка сброшена.",
+    "settings.title": "Настройки геймпада",
+    "settings.scale": "Размер кнопок и стиков",
+    "settings.shape": "Форма кнопок",
+    "settings.shapeRound": "Круги",
+    "settings.shapeSoft": "Скругление",
+    "settings.shapeSquare": "Квадраты",
+    "settings.sensL": "Чувствительность левого стика",
+    "settings.sensR": "Чувствительность правого стика",
+    "settings.rumble": "Вибрация от игры",
+    "settings.screen": "Экран ПК",
+    "settings.screenHint": "Экран передаётся только пока просмотр включён — выключил, передача остановилась.",
+    "settings.quality": "Качество экрана",
+    "settings.fps": "Кадры в секунду",
+    "settings.fpsHint": "Фактический FPS зависит от монитора и Wi-Fi. 120 возможен только на 120-Гц экране.",
+    "settings.testRumble": "ПРОВЕРИТЬ ВИБРАЦИЮ",
+    "settings.rumbleHint": "Игра должна поддерживать вибрацию геймпада.",
+    "settings.editLayout": "ИЗМЕНИТЬ РАСПОЛОЖЕНИЕ",
+    "settings.resetLayout": "СБРОСИТЬ РАСКЛАДКУ",
+    "quality.low": "Эконом",
+    "quality.medium": "Обычное",
+    "quality.high": "Высокое",
+    "quality.ultra": "Максимум",
+    "rotate": "ПОВЕРНИ ТЕЛЕФОН ГОРИЗОНТАЛЬНО",
+    "connect.intro": "Телефон станет Xbox-контроллером для игр на ПК. Адрес и код показаны в окне сервера геймпада на ПК.",
+    "connect.address": "АДРЕС ПК",
+    "connect.code": "КОД ДОСТУПА",
+    "connect.codePlaceholder": "КОД",
+    "connect.button": "ПОДКЛЮЧИТЬСЯ",
+    "connect.test": "ПРОВЕРИТЬ СВЯЗЬ",
+    "connect.sameWifi": "Телефон и ПК должны быть в одной Wi-Fi сети.",
+    "connect.miui": "Чтобы экран не гас: MIUI → Настройки → Экран → Таймаут 10 минут.",
+    "status.connecting": "подключение…",
+    "status.connected": "подключено",
+    "status.offline": "нет связи",
+    "status.badAddress": "ошибка адреса",
+    "status.error": "ошибка",
+    "status.checking": "проверка…",
+    "status.serverFound": "сервер найден",
+    "status.connectingOverlay": "Подключаюсь…",
+    "status.checkingServer": "Проверяю сервер…",
+    "screen.prefix": "ЭКРАН:",
+    "screen.noSignal": "нет сигнала",
+    "err.enterAddress": "Укажи адрес ПК, например 192.168.0.105:8090",
+    "err.badAddress": "Неверный адрес ПК. Пример: 192.168.0.105:8090",
+    "err.http": "Сервер ответил HTTP {status}. Проверь, что запущен именно Pad.",
+    "err.notPad": "Сервер ответил, но это не Pad.",
+    "err.noResponse": "Сервер не отвечает. Проверь: окно Pad открыто, адрес верный, телефон в той же Wi-Fi.",
+    "err.timeout": "Сервер {address} не ответил за 7 секунд. Проверь, что окно Pad открыто, адрес верный и телефон в той же Wi-Fi.",
+    "err.connection": "Ошибка подключения",
+    "err.badCode": "Неверный код доступа",
+    "err.lanOff": "На ПК выключен доступ с телефона",
+    "err.connect": "Не удалось подключиться к {address}. Проверь, что сервер запущен и телефон в той же Wi-Fi.",
+    "err.enterCode": "Введи код доступа",
+    "err.enterServerCode": "Введи код из окна сервера геймпада на ПК",
+    "msg.serverFound": "Сервер найден. Можно подключаться.",
+    "rumble.unsupported": "Этот WebView не поддерживает вибрацию.",
+    "rumble.check": "Если телефон молчит — проверь системную вибрацию и разрешение приложения.",
+    "rumble.permission": "Вибрация недоступна: проверь разрешение VIBRATE.",
+    "item.lstick": "Левый стик",
+    "item.rstick": "Правый стик",
+    "item.dpad": "D-pad",
+    "item.face": "A/B/X/Y",
+    "item.lt": "LT",
+    "item.lb": "LB",
+    "item.rt": "RT",
+    "item.rb": "RB",
+    "item.center": "BACK/START",
+    "shape.round": "КРУГ",
+    "shape.soft": "СКРУГЛ.",
+    "shape.square": "КВАДРАТ",
+    "dpad.up": "Вверх",
+    "dpad.down": "Вниз",
+    "dpad.left": "Влево",
+    "dpad.right": "Вправо",
+    "unit.ms": "мс",
+    "unit.mbps": "Мбит/с"
+  },
+  "en": {
+    "hud.fullscreen": "FULLSCREEN",
+    "hud.code": "CODE",
+    "hud.reset": "RESET",
+    "hud.screenAria": "PC screen",
+    "hud.settingsAria": "Settings",
+    "hud.langAria": "Language",
+    "common.done": "DONE",
+    "common.reset": "RESET",
+    "common.close": "Close",
+    "edit.hint": "SELECT A CONTROL AND ADJUST",
+    "edit.button": "Control",
+    "edit.size": "Size",
+    "edit.shape": "Shape",
+    "edit.offset": "Offset",
+    "edit.resetDone": "Layout reset.",
+    "settings.title": "Gamepad settings",
+    "settings.scale": "Button and stick size",
+    "settings.shape": "Button shape",
+    "settings.shapeRound": "Round",
+    "settings.shapeSoft": "Rounded",
+    "settings.shapeSquare": "Square",
+    "settings.sensL": "Left stick sensitivity",
+    "settings.sensR": "Right stick sensitivity",
+    "settings.rumble": "Game rumble",
+    "settings.screen": "PC screen",
+    "settings.screenHint": "The screen streams only while the view is on — turn it off to stop.",
+    "settings.quality": "Screen quality",
+    "settings.fps": "Frames per second",
+    "settings.fpsHint": "Actual FPS depends on the monitor and Wi-Fi. 120 fps requires a 120 Hz screen.",
+    "settings.testRumble": "TEST RUMBLE",
+    "settings.rumbleHint": "The game must support gamepad rumble.",
+    "settings.editLayout": "EDIT LAYOUT",
+    "settings.resetLayout": "RESET LAYOUT",
+    "quality.low": "Low",
+    "quality.medium": "Medium",
+    "quality.high": "High",
+    "quality.ultra": "Max",
+    "rotate": "ROTATE YOUR PHONE TO LANDSCAPE",
+    "connect.intro": "Your phone becomes an Xbox controller for PC games. The address and code are shown in the PC server window.",
+    "connect.address": "PC ADDRESS",
+    "connect.code": "ACCESS CODE",
+    "connect.codePlaceholder": "CODE",
+    "connect.button": "CONNECT",
+    "connect.test": "TEST CONNECTION",
+    "connect.sameWifi": "The phone and PC must be on the same Wi-Fi network.",
+    "connect.miui": "To keep the screen on: MIUI → Settings → Display → Screen timeout 10 minutes.",
+    "status.connecting": "connecting…",
+    "status.connected": "connected",
+    "status.offline": "no connection",
+    "status.badAddress": "bad address",
+    "status.error": "error",
+    "status.checking": "checking…",
+    "status.serverFound": "server found",
+    "status.connectingOverlay": "Connecting…",
+    "status.checkingServer": "Checking the server…",
+    "screen.prefix": "SCREEN:",
+    "screen.noSignal": "no signal",
+    "err.enterAddress": "Enter the PC address, e.g. 192.168.0.105:8090",
+    "err.badAddress": "Invalid PC address. Example: 192.168.0.105:8090",
+    "err.http": "Server returned HTTP {status}. Make sure Pad is running.",
+    "err.notPad": "The server responded, but it is not Pad.",
+    "err.noResponse": "The server is not responding. Check that Pad is open, the address is correct, and the phone is on the same Wi-Fi.",
+    "err.timeout": "Server {address} did not respond within 7 seconds. Check that Pad is open, the address is correct, and the phone is on the same Wi-Fi.",
+    "err.connection": "Connection error",
+    "err.badCode": "Invalid access code",
+    "err.lanOff": "Phone access is disabled on the PC",
+    "err.connect": "Could not connect to {address}. Check that the server is running and the phone is on the same Wi-Fi.",
+    "err.enterCode": "Enter the access code",
+    "err.enterServerCode": "Enter the code from the PC gamepad server window",
+    "msg.serverFound": "Server found. You can connect.",
+    "rumble.unsupported": "This WebView does not support vibration.",
+    "rumble.check": "If the phone stays silent, check system vibration and the app permission.",
+    "rumble.permission": "Vibration unavailable: check the VIBRATE permission.",
+    "item.lstick": "Left stick",
+    "item.rstick": "Right stick",
+    "item.dpad": "D-pad",
+    "item.face": "A/B/X/Y",
+    "item.lt": "LT",
+    "item.lb": "LB",
+    "item.rt": "RT",
+    "item.rb": "RB",
+    "item.center": "BACK/START",
+    "shape.round": "ROUND",
+    "shape.soft": "ROUNDED",
+    "shape.square": "SQUARE",
+    "dpad.up": "Up",
+    "dpad.down": "Down",
+    "dpad.left": "Left",
+    "dpad.right": "Right",
+    "unit.ms": "ms",
+    "unit.mbps": "Mbps"
+  }
+};
+
+  let lang = (() => {
+    try {
+      const saved = localStorage.getItem(LANG_STORE);
+      if (saved === 'ru' || saved === 'en') return saved;
+    } catch { /* storage disabled */ }
+    return String(navigator.language || '').toLowerCase().startsWith('en') ? 'en' : 'ru';
+  })();
+
+  function t(name, vars) {
+    const table = I18N[lang] || I18N.ru;
+    let text = table[name] || I18N.ru[name] || name;
+    if (vars) {
+      text = text.replace(/\{(\w+)\}/g, (_, key) => (vars[key] === undefined ? '' : String(vars[key])));
+    }
+    return text;
+  }
+
+  function itemLabel(name) { return t('item.' + name); }
+  function shapeLabel(name) { return t('shape.' + name); }
+  function profileLabel(name) { return t('quality.' + name); }
+
+  function applyLanguage() {
+    document.documentElement.lang = lang;
+    $$('[data-i18n]').forEach((node) => { node.textContent = t(node.dataset.i18n); });
+    $$('[data-i18n-placeholder]').forEach((node) => { node.placeholder = t(node.dataset.i18nPlaceholder); });
+    $$('[data-i18n-aria]').forEach((node) => { node.setAttribute('aria-label', t(node.dataset.i18nAria)); });
+    ['#lang-btn', '#lang-overlay'].forEach((selector) => {
+      const button = $(selector);
+      if (!button) return;
+      button.textContent = lang === 'ru' ? 'EN' : 'RU';
+      button.setAttribute('aria-label', t('hud.langAria'));
+    });
+    if ($('#screen-quality-label')) {
+      const profile = SCREEN_PROFILES[cfg.screenQuality] || SCREEN_PROFILES.high;
+      const fps = Number(cfg.screenFps) || 30;
+      const mbps = Math.round((profile.bytes * 8 * fps) / 1e6);
+      $('#screen-quality-label').textContent = profileLabel(cfg.screenQuality);
+      $('#screen-quality-hint').textContent = `${profile.width} px · q${profile.quality} · ≈${mbps} ${t('unit.mbps')}`;
+    }
+    if ($('#be-name')) {
+      const custom = selectedItem && cfg.items ? cfg.items[selectedItem] : null;
+      $('#be-name').textContent = selectedItem ? itemLabel(selectedItem) : t('edit.button');
+      $('#be-shape').textContent = shapeLabel((custom && custom.shape) || cfg.shape);
+    }
+    if ($('#ping') && $('#ping').textContent.trim().startsWith('—')) {
+      $('#ping').textContent = `— ${t('unit.ms')}`;
+    }
+    if ($('#hint') && !$('#hint').classList.contains('bad')) {
+      $('#hint').textContent = t('connect.sameWifi');
+    }
+    if ($('#rumble-hint') && !$('#rumble-hint').classList.contains('bad')) {
+      $('#rumble-hint').textContent = t('settings.rumbleHint');
+    }
+    if ($('#status')) {
+      $('#status').textContent = connected ? t('status.connected') : t('status.connecting');
+    }
+  }
+
+  function setLanguage(next) {
+    lang = next === 'en' ? 'en' : 'ru';
+    try { localStorage.setItem(LANG_STORE, lang); } catch { /* storage disabled */ }
+    applyLanguage();
+  }
+  let cfg = { ...DEFAULT_CONFIG };
+  let editing = false;
+  let selectedItem = null;
+  let selectedNode = null;
+  let lastRumbleAt = 0;
+  let screenWs = null;
+  let screenOpen = false;
+  let screenRetry = null;
+  let screenDrawing = false;
+  let screenFrames = 0;
+  let screenFpsTimer = null;
+
+  let ws = null;
+  let connected = false;
+  let closing = false;
+  let connectTimer = null;
+  let lastPayload = '';
+  let lastSentAt = 0;
+  let wakeLock = null;
+  let key = '';
+  let serverAddress = '';
+
+  function loadConfig() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(CONFIG_STORE) || '{}');
+      cfg = {
+        ...DEFAULT_CONFIG,
+        ...raw,
+        layout: raw && typeof raw.layout === 'object' && raw.layout ? raw.layout : {},
+        items: raw && typeof raw.items === 'object' && raw.items ? raw.items : {},
+      };
+    } catch {
+      cfg = { ...DEFAULT_CONFIG };
+    }
+  }
+
+  function saveConfig() {
+    try { localStorage.setItem(CONFIG_STORE, JSON.stringify(cfg)); } catch { /* приватный режим */ }
+  }
+
+  function applyItems() {
+    Object.entries(LAYOUT_TARGETS).forEach(([name, selector]) => {
+      const node = $(selector);
+      if (!node) return;
+      const item = (cfg.items && cfg.items[name]) || {};
+      node.style.setProperty('--item-scale', String(item.scale || 1));
+      if (name !== 'lstick' && name !== 'rstick' && name !== 'center') {
+        node.dataset.shape = item.shape || cfg.shape;
+      }
+    });
+  }
+
+  function applyLayout() {
+    Object.entries(LAYOUT_TARGETS).forEach(([name, selector]) => {
+      const node = $(selector);
+      if (!node) return;
+      const pos = cfg.layout ? cfg.layout[name] : null;
+      if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.y)) {
+        node.style.left = `${pos.x}%`;
+        node.style.top = `${pos.y}%`;
+        node.style.right = 'auto';
+        node.style.bottom = 'auto';
+      } else {
+        node.style.left = '';
+        node.style.top = '';
+        node.style.right = '';
+        node.style.bottom = '';
+      }
+    });
+  }
+
+  function applyConfig() {
+    document.documentElement.style.setProperty('--pad-scale', String(cfg.scale));
+    $('#app').dataset.shape = cfg.shape;
+    $('#scale-value').textContent = `${Math.round(cfg.scale * 100)}%`;
+    $('#sens-l-value').textContent = `${Math.round(cfg.sensL * 100)}%`;
+    $('#sens-r-value').textContent = `${Math.round(cfg.sensR * 100)}%`;
+    $('#set-scale').value = String(Math.round(cfg.scale * 100));
+    $('#set-sens-l').value = String(Math.round(cfg.sensL * 100));
+    $('#set-sens-r').value = String(Math.round(cfg.sensR * 100));
+    $('#set-rumble').checked = Boolean(cfg.rumble);
+    $('#set-screen').checked = Boolean(cfg.screen);
+    $('#screen-btn').classList.toggle('active', Boolean(cfg.screen));
+    const profile = SCREEN_PROFILES[cfg.screenQuality] || SCREEN_PROFILES.high;
+    const fpsValue = Number(cfg.screenFps) || 30;
+    const mbps = Math.round((profile.bytes * 8 * fpsValue) / 1e6);
+    $('#screen-quality-label').textContent = profileLabel(cfg.screenQuality);
+    $('#screen-quality-hint').textContent =
+      `${profile.width} px · q${profile.quality} · ≈${mbps} ${t('unit.mbps')}`;
+    $$('#screen-quality button').forEach((button) => {
+      button.classList.toggle('active', button.dataset.quality === cfg.screenQuality);
+    });
+    $('#screen-fps-label').textContent = String(fpsValue);
+    $$('#screen-fps button').forEach((button) => {
+      button.classList.toggle('active', Number(button.dataset.fps) === fpsValue);
+    });
+    $$('#shape-group button').forEach((button) => {
+      button.classList.toggle('active', button.dataset.shape === cfg.shape);
+    });
+    if (!cfg.screen && screenOpen) closeScreen();
+    applyItems();
+    applyLayout();
+  }
+
+  function setStatus(text, tone = '') {
+    $('#status').textContent = text;
+    $('#dot').className = `dot ${tone}`;
+  }
+
+  function setPing(ms) {
+    const node = $('#ping');
+    const value = Number(ms);
+    if (ms === null || ms === undefined || !Number.isFinite(value) || value <= 0) {
+      node.textContent = `— ${t('unit.ms')}`;
+      node.classList.remove('bad');
+      return;
+    }
+    node.textContent = `${Math.round(value)} ${t('unit.ms')}`;
+    node.classList.toggle('bad', value > 120);
+  }
+
+  function showOverlay(message, bad = false, focus = true) {
+    $('#overlay').classList.add('visible');
+    $('#hint').textContent = message || t('connect.sameWifi');
+    $('#hint').classList.toggle('bad', Boolean(bad));
+    if (focus) {
+      $('#address').value = serverAddress;
+      $('#key').value = key;
+      setTimeout(() => (serverAddress ? $('#key') : $('#address')).focus(), 60);
+    }
+  }
+
+  function hideOverlay() {
+    $('#overlay').classList.remove('visible');
+  }
+
+  function normalizeAddress(raw) {
+    let value = String(raw || '').trim();
+    if (!value) return '';
+    if (!/^https?:\/\//i.test(value)) value = `http://${value}`;
+    try {
+      const url = new URL(value);
+      if (!url.port) url.port = '8090';
+      return `${url.protocol}//${url.host}`;
+    } catch {
+      return '';
+    }
+  }
+
+  async function checkServer() {
+    const root = normalizeAddress(serverAddress);
+    if (!root) return { ok: false, message: t('err.enterAddress') };
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+    try {
+      const response = await fetch(`${root}/ping`, { signal: controller.signal, cache: 'no-store' });
+      if (!response.ok) {
+        return { ok: false, message: t('err.http', { status: response.status }) };
+      }
+      const data = await response.json();
+      return data && data.ok
+        ? { ok: true, message: t('msg.serverFound') }
+        : { ok: false, message: t('err.notPad') };
+    } catch {
+      return {
+        ok: false,
+        message: t('err.noResponse'),
+      };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  function wsUrl() {
+    const base = new URL(normalizeAddress(serverAddress));
+    const scheme = base.protocol === 'https:' ? 'wss' : 'ws';
+    return `${scheme}://${base.host}/ws?key=${encodeURIComponent(key)}`;
+  }
+
+  function connect() {
+    clearTimeout(connectTimer);
+    if (ws) {
+      closing = true;
+      try { ws.close(); } catch { /* уже закрыт */ }
+      ws = null;
+    }
+    closing = false;
+    setStatus(t('status.connecting'), 'wait');
+    setPing(null);
+    let socket;
+    try {
+      socket = new WebSocket(wsUrl());
+    } catch {
+      setStatus(t('status.badAddress'), 'bad');
+      showOverlay(t('err.badAddress'), true);
+      return;
+    }
+    ws = socket;
+
+    connectTimer = setTimeout(() => {
+      if (socket !== ws || socket.readyState !== WebSocket.CONNECTING) return;
+      closing = true;
+      try { socket.close(); } catch { /* уже закрыт */ }
+      setStatus(t('status.offline'), 'bad');
+      showOverlay(t('err.timeout', { address: normalizeAddress(serverAddress) }), true);
+    }, 7000);
+
+    socket.onopen = () => {
+      if (socket !== ws) return;
+      clearTimeout(connectTimer);
+      connected = true;
+      setStatus(t('status.connected'), 'ok');
+      hideOverlay();
+      requestWakeLock();
+      socket.send(JSON.stringify({ type: 'ping', ts: Date.now() }));
+    };
+
+    socket.onmessage = (event) => {
+      let data;
+      try { data = JSON.parse(event.data); } catch { return; }
+      if (data.type === 'pong') {
+        setPing(Math.max(0, Date.now() - Number(data.ts || 0)));
+        return;
+      }
+      if (data.type === 'rumble') {
+        handleRumble(data.large, data.small);
+        return;
+      }
+      if (data.type === 'error') {
+        closing = true;
+        setStatus(t('status.error'), 'bad');
+        showOverlay(data.message || t('err.connection'), true);
+        try { socket.close(); } catch { /* уже закрыт */ }
+      }
+    };
+
+    socket.onclose = (event) => {
+      if (socket !== ws) return;
+      clearTimeout(connectTimer);
+      connected = false;
+      resetAll();
+      setStatus(t('status.offline'), 'bad');
+      setPing(null);
+      if (closing) {
+        closing = false;
+        return;
+      }
+      if (event.code === 4401 || event.code === 4403) {
+        showOverlay(event.code === 4401 ? t('err.badCode') : t('err.lanOff'), true);
+        return;
+      }
+      showOverlay(t('err.connect', { address: normalizeAddress(serverAddress) }), true);
+    };
+  }
+
+  function resetAll() {
+    state.lx = 0; state.ly = 0; state.rx = 0; state.ry = 0;
+    state.lt = 0; state.rt = 0; state.b = 0; state.d = 0;
+    $$('.pressed').forEach((node) => node.classList.remove('pressed'));
+    $$('.stick-zone').forEach((zone) => {
+      zone.classList.remove('active');
+      zone.querySelector('.stick-knob').style.transform = 'translate(-50%, -50%)';
+    });
+    lastPayload = '';
+  }
+
+  function setButton(name, pressed) {
+    const bit = BITS[name];
+    if (!bit) return;
+    state.b = pressed ? (state.b | bit) : (state.b & ~bit);
+    $$(`[data-btn="${name}"]`).forEach((node) => node.classList.toggle('pressed', pressed));
+  }
+
+  function setDpad(name, pressed) {
+    const bit = DPAD_BITS[name];
+    if (!bit) return;
+    state.d = pressed ? (state.d | bit) : (state.d & ~bit);
+    $$(`[data-dpad="${name}"]`).forEach((node) => node.classList.toggle('pressed', pressed));
+  }
+
+  function setTrigger(name, pressed) {
+    state[name] = pressed ? 1 : 0;
+    $$(`[data-trig="${name}"]`).forEach((node) => node.classList.toggle('pressed', pressed));
+  }
+
+  function bindButton(node, setter) {
+    const pointers = new Set();
+    node.addEventListener('pointerdown', (event) => {
+      if (editing) return;
+      event.preventDefault();
+      pointers.add(event.pointerId);
+      try { node.setPointerCapture(event.pointerId); } catch { /* не критично */ }
+      setter(true);
+    });
+    const release = (event) => {
+      if (!pointers.delete(event.pointerId)) return;
+      if (!pointers.size) setter(false);
+    };
+    node.addEventListener('pointerup', release);
+    node.addEventListener('pointercancel', release);
+    node.addEventListener('lostpointercapture', release);
+  }
+
+  $$('[data-btn]').forEach((node) => bindButton(node, (on) => setButton(node.dataset.btn, on)));
+  $$('[data-dpad]').forEach((node) => bindButton(node, (on) => setDpad(node.dataset.dpad, on)));
+  $$('[data-trig]').forEach((node) => bindButton(node, (on) => setTrigger(node.dataset.trig, on)));
+
+  function setupStick(zone, axisX, axisY) {
+    const knob = $('.stick-knob', zone);
+    let pointerId = null;
+
+    const move = (event) => {
+      const rect = zone.getBoundingClientRect();
+      const radius = rect.width * 0.34;
+      let dx = event.clientX - (rect.left + rect.width / 2);
+      let dy = event.clientY - (rect.top + rect.height / 2);
+      const distance = Math.hypot(dx, dy);
+      if (distance > radius) {
+        dx = (dx / distance) * radius;
+        dy = (dy / distance) * radius;
+      }
+      let nx = dx / radius;
+      let ny = dy / radius;
+      if (Math.hypot(nx, ny) < 0.12) { nx = 0; ny = 0; }
+      state[axisX] = Math.round(nx * 1000) / 1000;
+      state[axisY] = Math.round(ny * 1000) / 1000;
+      knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+    };
+
+    zone.addEventListener('pointerdown', (event) => {
+      if (editing || pointerId !== null) return;
+      event.preventDefault();
+      pointerId = event.pointerId;
+      try { zone.setPointerCapture(pointerId); } catch { /* не критично */ }
+      zone.classList.add('active');
+      move(event);
+    });
+
+    zone.addEventListener('pointermove', (event) => {
+      if (event.pointerId === pointerId) move(event);
+    });
+
+    const end = (event) => {
+      if (event.pointerId !== pointerId) return;
+      pointerId = null;
+      state[axisX] = 0;
+      state[axisY] = 0;
+      zone.classList.remove('active');
+      knob.style.transform = 'translate(-50%, -50%)';
+    };
+    zone.addEventListener('pointerup', end);
+    zone.addEventListener('pointercancel', end);
+    zone.addEventListener('lostpointercapture', end);
+  }
+
+  setupStick($('#lstick'), 'lx', 'ly');
+  setupStick($('#rstick'), 'rx', 'ry');
+
+  function sendState() {
+    if (!connected || !ws || ws.readyState !== WebSocket.OPEN) return;
+    const now = performance.now();
+    const clampAxis = (value) => Math.max(-1, Math.min(1, value));
+    const payload = JSON.stringify({
+      type: 'state',
+      lx: clampAxis(state.lx * cfg.sensL), ly: clampAxis(state.ly * cfg.sensL),
+      rx: clampAxis(state.rx * cfg.sensR), ry: clampAxis(state.ry * cfg.sensR),
+      lt: state.lt, rt: state.rt, b: state.b, d: state.d,
+    });
+    if (payload === lastPayload && now - lastSentAt < 40) return;
+    if (ws.bufferedAmount > 8192) return;
+    ws.send(payload);
+    lastPayload = payload;
+    lastSentAt = now;
+  }
+
+  function frame() {
+    requestAnimationFrame(frame);
+    sendState();
+  }
+  requestAnimationFrame(frame);
+
+  setInterval(() => {
+    if (connected && ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'ping', ts: Date.now() }));
+    }
+  }, 1000);
+
+  async function requestWakeLock() {
+    try {
+      if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen');
+    } catch { /* http:// не даёт Wake Lock — экран может гаснуть */ }
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      resetAll();
+      if (connected) sendState();
+      if (screenOpen) closeScreen();
+      return;
+    }
+    if (cfg.screen) openScreen();
+    if (connected) requestWakeLock();
+  });
+  window.addEventListener('pagehide', () => {
+    resetAll();
+    sendState();
+  });
+
+  $('#key').addEventListener('input', (event) => {
+    event.target.value = event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  });
+
+  async function startWithKey(addressValue, keyValue) {
+    serverAddress = normalizeAddress(addressValue);
+    key = String(keyValue || '').trim().toUpperCase();
+    if (!serverAddress) {
+      showOverlay(t('err.enterAddress'), true);
+      return;
+    }
+    if (!key) {
+      showOverlay(t('err.enterCode'), true);
+      return;
+    }
+    try {
+      localStorage.setItem(ADDR_STORE, serverAddress);
+      localStorage.setItem(KEY_STORE, key);
+    } catch { /* приватный режим */ }
+    showOverlay(t('status.checkingServer'), false, false);
+    setStatus(t('status.checking'), 'wait');
+    const check = await checkServer();
+    if (!check.ok) {
+      setStatus(t('status.offline'), 'bad');
+      showOverlay(check.message, true);
+      return;
+    }
+    showOverlay(t('status.connectingOverlay'), false, false);
+    setStatus(t('status.connecting'), 'wait');
+    connect();
+    if (cfg.screen) {
+      closeScreen();
+      openScreen();
+    }
+  }
+
+  $('#connect').addEventListener('click', async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+        if (screen.orientation && screen.orientation.lock) {
+          await screen.orientation.lock('landscape').catch(() => {});
+        }
+      }
+    } catch { /* браузер может запретить полноэкранный режим */ }
+    await startWithKey($('#address').value, $('#key').value);
+  });
+  $('#key').addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') startWithKey($('#address').value, $('#key').value);
+  });
+
+  $('#test').addEventListener('click', async () => {
+    serverAddress = normalizeAddress($('#address').value);
+    key = String($('#key').value || '').trim().toUpperCase();
+    if (!serverAddress) {
+      showOverlay(t('err.enterAddress'), true);
+      return;
+    }
+    setStatus(t('status.checking'), 'wait');
+    showOverlay(t('status.checkingServer'), false, false);
+    const result = await checkServer();
+    setStatus(result.ok ? t('status.serverFound') : t('status.offline'), result.ok ? 'ok' : 'bad');
+    showOverlay(result.message, !result.ok, false);
+  });
+
+  $('#reset').addEventListener('click', () => {
+    resetAll();
+    sendState();
+  });
+
+  $('#key-btn').addEventListener('click', () => {
+    showOverlay(t('err.enterServerCode'));
+  });
+
+  $('#fs').addEventListener('click', async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+        if (screen.orientation && screen.orientation.lock) {
+          await screen.orientation.lock('landscape').catch(() => {});
+        }
+      } else {
+        await document.exitFullscreen();
+      }
+    } catch { /* браузер может запретить */ }
+  });
+
+  function setScreenStatus(text) {
+    const node = $('#screen-state');
+    node.hidden = !screenOpen;
+    node.textContent = `${t('screen.prefix')} ${text}`;
+  }
+
+  function drawFrame(bitmap) {
+    const canvas = $('#screen-canvas');
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const width = Math.max(1, Math.round(canvas.clientWidth * dpr));
+    const height = Math.max(1, Math.round(canvas.clientHeight * dpr));
+    if (canvas.width !== width || canvas.height !== height) {
+      canvas.width = width;
+      canvas.height = height;
+    }
+    const context = canvas.getContext('2d');
+    context.fillStyle = '#000';
+    context.fillRect(0, 0, width, height);
+    const scale = Math.min(width / bitmap.width, height / bitmap.height);
+    const drawWidth = bitmap.width * scale;
+    const drawHeight = bitmap.height * scale;
+    context.drawImage(bitmap, (width - drawWidth) / 2, (height - drawHeight) / 2,
+      drawWidth, drawHeight);
+  }
+
+  function screenUrl() {
+    const base = new URL(normalizeAddress(serverAddress));
+    const scheme = base.protocol === 'https:' ? 'wss' : 'ws';
+    const profile = SCREEN_PROFILES[cfg.screenQuality] || SCREEN_PROFILES.high;
+    const fpsValue = Number(cfg.screenFps) || 30;
+    return `${scheme}://${base.host}/screen/ws?key=${encodeURIComponent(key)}`
+      + `&w=${profile.width}&fps=${fpsValue}&q=${profile.quality}`;
+  }
+
+  function startScreenSocket() {
+    clearTimeout(screenRetry);
+    if (screenWs) {
+      try { screenWs.close(); } catch { /* уже закрыт */ }
+      screenWs = null;
+    }
+    let socket;
+    try {
+      socket = new WebSocket(screenUrl());
+    } catch {
+      setScreenStatus(t('status.badAddress'));
+      return;
+    }
+    screenWs = socket;
+    socket.binaryType = 'arraybuffer';
+    socket.onopen = () => setScreenStatus('LIVE');
+    socket.onmessage = async (event) => {
+      if (typeof event.data === 'string') {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'error') setScreenStatus(data.message || t('status.error'));
+        } catch { /* не JSON */ }
+        return;
+      }
+      screenFrames += 1;
+      if (screenDrawing) return;
+      screenDrawing = true;
+      try {
+        const bitmap = await createImageBitmap(new Blob([event.data], { type: 'image/jpeg' }));
+        drawFrame(bitmap);
+        bitmap.close();
+      } catch { /* пропускаем битый кадр */ }
+      finally { screenDrawing = false; }
+    };
+    socket.onclose = () => {
+      if (!screenOpen) return;
+      setScreenStatus(t('screen.noSignal'));
+      screenRetry = setTimeout(startScreenSocket, 3000);
+    };
+  }
+
+  function openScreen() {
+    if (!cfg.screen || screenOpen) return;
+    if (!serverAddress || !key) {
+      showOverlay();
+      return;
+    }
+    screenOpen = true;
+    $('#screen-view').hidden = false;
+    setScreenStatus(t('status.connecting'));
+    screenFrames = 0;
+    clearInterval(screenFpsTimer);
+    screenFpsTimer = setInterval(() => {
+      if (!screenOpen) return;
+      const fps = screenFrames;
+      screenFrames = 0;
+      setScreenStatus(fps > 0 ? `${fps} fps` : t('screen.noSignal'));
+    }, 1000);
+    startScreenSocket();
+  }
+
+  function closeScreen() {
+    screenOpen = false;
+    screenFrames = 0;
+    clearInterval(screenFpsTimer);
+    screenFpsTimer = null;
+    clearTimeout(screenRetry);
+    if (screenWs) {
+      try { screenWs.close(); } catch { /* уже закрыт */ }
+      screenWs = null;
+    }
+    $('#screen-view').hidden = true;
+    setScreenStatus('—');
+  }
+
+  function handleRumble(large, small) {
+    if (!cfg.rumble || !('vibrate' in navigator)) return;
+    const strength = Math.max(Number(large) || 0, Number(small) || 0);
+    if (strength <= 6) return;
+    const now = Date.now();
+    if (now - lastRumbleAt < 90) return;
+    lastRumbleAt = now;
+    const duration = Math.max(25, Math.min(120, Math.round((strength / 255) * 120)));
+    try { navigator.vibrate(duration); } catch { /* вибрация запрещена */ }
+  }
+
+  function openSettings() {
+    resetAll();
+    if (editing) setEditing(false);
+    $('#settings').classList.add('visible');
+    applyConfig();
+  }
+
+  function closeSettings() {
+    $('#settings').classList.remove('visible');
+  }
+
+  $('#settings-btn').addEventListener('click', openSettings);
+  $('#settings-close').addEventListener('click', closeSettings);
+  $('#screen-btn').addEventListener('click', () => {
+    cfg.screen = !cfg.screen;
+    saveConfig();
+    applyConfig();
+    if (cfg.screen) openScreen();
+    else closeScreen();
+  });
+  $('#set-screen').addEventListener('change', (event) => {
+    cfg.screen = event.target.checked;
+    saveConfig();
+    applyConfig();
+    if (cfg.screen) openScreen();
+    else closeScreen();
+  });
+  $$('#screen-quality button').forEach((button) => {
+    button.addEventListener('click', () => {
+      cfg.screenQuality = button.dataset.quality;
+      saveConfig();
+      applyConfig();
+      if (screenOpen) {
+        closeScreen();
+        openScreen();
+      }
+    });
+  });
+  $$('#screen-fps button').forEach((button) => {
+    button.addEventListener('click', () => {
+      cfg.screenFps = Number(button.dataset.fps) || 30;
+      saveConfig();
+      applyConfig();
+      if (screenOpen) {
+        closeScreen();
+        openScreen();
+      }
+    });
+  });
+  $('#settings').addEventListener('click', (event) => {
+    if (event.target === $('#settings')) closeSettings();
+  });
+
+  $('#set-scale').addEventListener('input', (event) => {
+    cfg.scale = Number(event.target.value) / 100;
+    applyConfig();
+    saveConfig();
+  });
+  $('#set-sens-l').addEventListener('input', (event) => {
+    cfg.sensL = Number(event.target.value) / 100;
+    applyConfig();
+    saveConfig();
+  });
+  $('#set-sens-r').addEventListener('input', (event) => {
+    cfg.sensR = Number(event.target.value) / 100;
+    applyConfig();
+    saveConfig();
+  });
+  $('#set-rumble').addEventListener('change', (event) => {
+    cfg.rumble = event.target.checked;
+    saveConfig();
+  });
+  $$('#shape-group button').forEach((button) => {
+    button.addEventListener('click', () => {
+      cfg.shape = button.dataset.shape;
+      applyConfig();
+      saveConfig();
+    });
+  });
+  $('#rumble-test').addEventListener('click', () => {
+    const hint = $('#rumble-hint');
+    if (!('vibrate' in navigator)) {
+      hint.textContent = t('rumble.unsupported');
+      hint.classList.add('bad');
+      return;
+    }
+    const ok = navigator.vibrate([140, 70, 140]);
+    hint.classList.toggle('bad', !ok);
+    hint.textContent = ok
+      ? t('rumble.check')
+      : t('rumble.permission');
+  });
+
+  function itemSettings(name) {
+    cfg.items = cfg.items || {};
+    if (!cfg.items[name]) cfg.items[name] = {};
+    return cfg.items[name];
+  }
+
+  function syncEditor() {
+    if (!selectedItem || !selectedNode) return;
+    const item = (cfg.items && cfg.items[selectedItem]) || {};
+    $('#be-name').textContent = itemLabel(selectedItem);
+    $('#be-size').textContent = `${Math.round((item.scale || 1) * 100)}%`;
+    const shape = item.shape || cfg.shape;
+    $('#be-shape').textContent = shapeLabel(shape);
+    $('#be-shape-row').hidden = selectedItem === 'lstick' || selectedItem === 'rstick';
+    $('#editbar').classList.remove('visible');
+    const panel = $('#btn-editor');
+    panel.hidden = false;
+    const rect = selectedNode.getBoundingClientRect();
+    const width = panel.offsetWidth || 214;
+    const height = panel.offsetHeight || 150;
+    let left = rect.left + rect.width / 2 - width / 2;
+    let top = rect.top - height - 10;
+    if (top < 52) top = rect.bottom + 10;
+    left = Math.max(8, Math.min(window.innerWidth - width - 8, left));
+    panel.style.left = `${left}px`;
+    panel.style.top = `${Math.max(52, Math.min(window.innerHeight - height - 8, top))}px`;
+  }
+
+  function selectItem(name, node) {
+    selectedItem = name;
+    selectedNode = node;
+    $$('.selected').forEach((item) => item.classList.remove('selected'));
+    node.classList.add('selected');
+    syncEditor();
+  }
+
+  function nudgeItem(direction) {
+    if (!selectedItem || !selectedNode) return;
+    const stage = $('#stage').getBoundingClientRect();
+    const rect = selectedNode.getBoundingClientRect();
+    const pos = (cfg.layout && cfg.layout[selectedItem]) || {
+      x: ((rect.left - stage.left) / stage.width) * 100,
+      y: ((rect.top - stage.top) / stage.height) * 100,
+    };
+    const step = 1.5;
+    if (direction === 'left') pos.x -= step;
+    if (direction === 'right') pos.x += step;
+    if (direction === 'up') pos.y -= step;
+    if (direction === 'down') pos.y += step;
+    pos.x = Math.max(0, Math.min(95, pos.x));
+    pos.y = Math.max(0, Math.min(95, pos.y));
+    cfg.layout = cfg.layout || {};
+    cfg.layout[selectedItem] = pos;
+    applyLayout();
+    saveConfig();
+    requestAnimationFrame(syncEditor);
+  }
+
+  function setEditing(value) {
+    editing = value;
+    $('#app').classList.toggle('editing', value);
+    $('#editbar').classList.toggle('visible', value);
+    if (value) {
+      resetAll();
+      closeSettings();
+      $('#editbar').classList.add('visible');
+    } else {
+      $('#btn-editor').hidden = true;
+      selectedItem = null;
+      selectedNode = null;
+      $$('.selected').forEach((node) => node.classList.remove('selected'));
+    }
+  }
+
+  function setupDrag() {
+    const stage = $('#stage');
+    Object.entries(LAYOUT_TARGETS).forEach(([name, selector]) => {
+      const node = $(selector);
+      if (!node) return;
+      node.addEventListener('pointerdown', (event) => {
+        if (!editing) return;
+        event.preventDefault();
+        event.stopPropagation();
+        selectItem(name, node);
+        const rect = node.getBoundingClientRect();
+        const offsetX = event.clientX - rect.left;
+        const offsetY = event.clientY - rect.top;
+        try { node.setPointerCapture(event.pointerId); } catch { /* не критично */ }
+        const move = (ev) => {
+          if (ev.pointerId !== event.pointerId) return;
+          const sr = stage.getBoundingClientRect();
+          let x = ev.clientX - sr.left - offsetX;
+          let y = ev.clientY - sr.top - offsetY;
+          x = Math.max(0, Math.min(sr.width - rect.width, x));
+          y = Math.max(0, Math.min(sr.height - rect.height, y));
+          node.style.left = `${(x / sr.width) * 100}%`;
+          node.style.top = `${(y / sr.height) * 100}%`;
+          node.style.right = 'auto';
+          node.style.bottom = 'auto';
+          syncEditor();
+        };
+        const end = (ev) => {
+          if (ev.pointerId !== event.pointerId) return;
+          node.removeEventListener('pointermove', move);
+          node.removeEventListener('pointerup', end);
+          node.removeEventListener('pointercancel', end);
+          const sr = stage.getBoundingClientRect();
+          const nr = node.getBoundingClientRect();
+          cfg.layout = cfg.layout || {};
+          cfg.layout[name] = {
+            x: Math.max(0, Math.min(100, ((nr.left - sr.left) / sr.width) * 100)),
+            y: Math.max(0, Math.min(100, ((nr.top - sr.top) / sr.height) * 100)),
+          };
+          saveConfig();
+          syncEditor();
+        };
+        node.addEventListener('pointermove', move);
+        node.addEventListener('pointerup', end);
+        node.addEventListener('pointercancel', end);
+      }, true);
+    });
+  }
+
+  $('#btn-editor').addEventListener('pointerdown', (event) => event.stopPropagation());
+  $('#btn-editor').addEventListener('click', (event) => {
+    if (!selectedItem) return;
+    const sizeButton = event.target.closest('[data-be-size]');
+    if (sizeButton) {
+      const item = itemSettings(selectedItem);
+      const delta = sizeButton.dataset.beSize === '+' ? 0.05 : -0.05;
+      item.scale = Math.max(0.7, Math.min(1.5, Math.round(((item.scale || 1) + delta) * 100) / 100));
+      applyItems();
+      saveConfig();
+      syncEditor();
+      return;
+    }
+    if (event.target.closest('#be-shape')) {
+      const item = itemSettings(selectedItem);
+      const order = ['round', 'soft', 'square'];
+      const current = item.shape || cfg.shape;
+      item.shape = order[(order.indexOf(current) + 1) % order.length];
+      applyItems();
+      saveConfig();
+      syncEditor();
+      return;
+    }
+    const moveButton = event.target.closest('[data-be-move]');
+    if (moveButton) {
+      nudgeItem(moveButton.dataset.beMove);
+      return;
+    }
+    if (event.target.closest('#be-done')) {
+      setEditing(false);
+      return;
+    }
+    if (event.target.closest('#be-reset')) {
+      cfg.items = cfg.items || {};
+      delete cfg.items[selectedItem];
+      if (cfg.layout) delete cfg.layout[selectedItem];
+      applyItems();
+      applyLayout();
+      saveConfig();
+      syncEditor();
+    }
+  });
+
+  ['#lang-btn', '#lang-overlay'].forEach((selector) => {
+    const button = $(selector);
+    if (button) button.addEventListener('click', () => setLanguage(lang === 'ru' ? 'en' : 'ru'));
+  });
+  $('#layout-edit').addEventListener('click', () => setEditing(true));
+  $('#edit-done').addEventListener('click', () => setEditing(false));
+  $('#layout-reset').addEventListener('click', () => {
+    cfg.layout = {};
+    saveConfig();
+    applyLayout();
+    $('#rumble-hint').textContent = t('edit.resetDone');
+    $('#rumble-hint').classList.remove('bad');
+  });
+
+  document.addEventListener('contextmenu', (event) => event.preventDefault());
+  document.addEventListener('gesturestart', (event) => event.preventDefault());
+  document.addEventListener('dblclick', (event) => event.preventDefault());
+
+  loadConfig();
+  applyConfig();
+  applyLanguage();
+  setupDrag();
+
+  const readStore = (name) => {
+    try { return localStorage.getItem(name) || ''; } catch { return ''; }
+  };
+  const params = new URLSearchParams(location.search);
+  const isWeb = location.protocol === 'http:' || location.protocol === 'https:';
+  const pageOrigin = isWeb && location.hostname !== 'tauri.localhost' ? location.origin : '';
+  serverAddress = normalizeAddress(params.get('server') || readStore(ADDR_STORE) || pageOrigin);
+  key = String(params.get('key') || readStore(KEY_STORE) || '').toUpperCase();
+
+  if (serverAddress) $('#address').value = serverAddress.replace(/^https?:\/\//i, '');
+  if (key) $('#key').value = key;
+
+  if (serverAddress && key) {
+    showOverlay(t('status.connectingOverlay'), false, false);
+    connect();
+    if (cfg.screen) openScreen();
+  } else {
+    showOverlay();
+  }
+})();
+</script>
+</body>
+</html>

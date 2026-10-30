@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Access code and local secrets
+code.txt
+.env
+
+# Build artifacts
+dist/
+build/
+*.exe
+*.apk
+*.aab
+*.log
+
+# Tauri / Rust / Android
+mobile/src-tauri/target/
+mobile/src-tauri/gen/
+mobile/src-tauri/.cargo/
+target/
+node_modules/
+.gradle/
+
+# OS
+Thumbs.db
+.DS_Store
