@@ -10,7 +10,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
 - New four-step connection guide with annotated screenshots (RU/EN).
 - Rebuilt Android APK with the bilingual interface.
 - Repository mockup: clean Pad branding, README (RU/EN), connection diagram, UI mockups.
-- Preparation for the first public repository and release.
+- Repository published as `Jeny999/pad` (private).
+- Connection verified over LAN: access code, sticks, buttons, rumble, 1 ms ping.
+- Troubleshooting note for the "server is not running" case.
 
 ## [0.1.0] - 2026-10-30
 

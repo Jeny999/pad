@@ -62,6 +62,8 @@ Settings: [settings.en.png](docs/mockups/settings.en.png)
 5. When the status says `connected`, the game should see a new Xbox controller.
 
 > If the phone cannot find the PC: make sure both devices are on the same network, the firewall allows the server, and the address is copied from the server window.
+>
+> If the PC answers `http://127.0.0.1:8090` with an immediate refusal while the phone just keeps waiting, the server is not running. Close the server window and start `PadServer.exe` again.
 
 ### Browser instead of the APK
 
@@ -154,9 +156,9 @@ The `release/` folder contains local builds: `PadServer.exe` and `Pad-debug.apk`
 
 ## Status
 
-Version **0.1.0** — a working prototype prepared for the GitHub repository. The repository and releases will appear after final review.
+Version **0.1.0** — a working prototype. Source lives in the `Jeny999/pad` repository; the connection was verified on a local network: the phone connects with the access code, sticks, buttons and rumble work.
 
-The current UI is in Russian; an English UI is on the roadmap.
+No builds are stored in git: `PadServer.exe` and `Pad-debug.apk` are built from source or taken from the local `release/` folder.
 
 ## License
 
